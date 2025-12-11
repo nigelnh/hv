@@ -91,8 +91,8 @@ def get_all_stock_data(symbols, from_date, to_date, delay=0.5):
 
 if __name__ == "__main__":
     symbols = ["ACB", "DGC", "FPT", "HDB", "HPG", "LPB", "MBB", "MSN", "MWG", "SHB", "SSB", "SSI", "STB", "TCB", "TPB", "VHM", "VIB", "VIC", "VJC", "VNM", "VPB", "VRE"]
-    from_date = "01/11/2024"
-    to_date   = "03/12/2025"
+    from_date = "01/01/2022"
+    to_date   = "31/12/2025"
     
     results = get_all_stock_data(symbols, from_date, to_date, delay=0.3)
 

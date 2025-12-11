@@ -54,35 +54,25 @@ def run_streamlit_ui():
         print(f"\n❌ Lỗi không xác định: {e}")
 
 def main():
-    print("\n" + "="*70)
-    print("CHƯƠNG TRÌNH TỰ ĐỘNG HÓA: LẤY DỮ LIỆU & VẼ BIỂU ĐỒ HV")
-    print("="*70)
-    
-    success = run_script(
-        "get_all_stock_data.py",
-        "BƯỚC 1: Lấy dữ liệu chứng khoán từ API"
-    )
+    # Bước 1: Lấy dữ liệu chứng khoán
+    print(f"\n{'='*70}")
+    print("BƯỚC 1: Lấy dữ liệu chứng khoán từ API")
+    print(f"{'='*70}\n")
+    success = run_script("get_all_stock_data.py", "BƯỚC 1: Lấy dữ liệu chứng khoán từ API")
     
     if not success:
         print("\n⚠️  Dừng chương trình do lỗi ở bước 1")
-        sys.exit(1)
+        return
     
-    success = run_script(
-        "calc_and_draw.py",
-        "BƯỚC 2: Tính toán và vẽ biểu đồ Historical Volatility"
-    )
-    
-    if not success:
-        print("\n⚠️  Dừng chương trình do lỗi ở bước 2")
-        sys.exit(1)
-    
-    print("\n" + "="*70)
-    print("HOÀN TẤT CÁC BƯỚC XỬ LÝ DỮ LIỆU!")
-    print("="*70)
+    # Bước 2: Khởi động UI (charts sẽ được tạo tự động)
+    print(f"\n\n{'='*70}")
+    print("HOÀN TẤT XỬ LÝ DỮ LIỆU!")
+    print(f"{'='*70}")
     print("Dữ liệu được lưu tại: data_output/")
-    print("Biểu đồ được lưu tại: draw_output/")
-    print("="*70 + "\n")
+    print("Biểu đồ sẽ được tạo tự động khi mở UI (Plotly interactive charts)")
+    print(f"{'='*70}\n")
     
+    # Chạy UI
     run_streamlit_ui()
 
 if __name__ == "__main__":
