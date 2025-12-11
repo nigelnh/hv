@@ -83,25 +83,21 @@ def apply_custom_css():
     """, unsafe_allow_html=True)
 
 
-def render_header(symbol, latest_date, current_price):
+def render_header(symbol, latest_date, current_price=None):
     """
     Render the main header with stock information.
     
     Args:
         symbol (str): Stock symbol
         latest_date: Latest trading date
-        current_price (float): Current stock price
+        current_price (float, optional): Current stock price (not used with database)
     """
     with st.container(border=True):
-        col1, col2, col3 = st.columns([5, 1, 1])
+        col1, col2 = st.columns([6, 1])
         with col1:
-            # Use markdown for title to have better control over alignment
             st.title(f"{symbol} - Historical Volatility Trend")
         
         with col2:
-            st.metric("Current Price", f"{current_price:,.2f}")
-        
-        with col3:
             st.metric("Latest Date", latest_date.strftime("%d/%m/%Y") if hasattr(latest_date, 'strftime') else str(latest_date))
 
 def render_quick_stats_cards(metrics):
@@ -511,20 +507,18 @@ def render_multi_stock_comparison(selected_stocks, all_symbols):
     """
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
-    from utils.data_loader import load_stock_data, get_current_metrics
+    from utils.data_loader import load_multiple_stocks_data, get_current_metrics
     
     if not selected_stocks or len(selected_stocks) < 2:
         st.warning("⚠️ Please select at least 2 stocks for comparison")
         return
     
-    # Load data for all selected stocks
-    stocks_data = {}
+    # Load data for all selected stocks efficiently (single DB query)
+    stocks_data = load_multiple_stocks_data(selected_stocks)
     stocks_metrics = {}
     
-    # with st.spinner(f"Loading data for {len(selected_stocks)} stocks..."):
-    for symbol in selected_stocks:
-        df = load_stock_data(symbol)
-        stocks_data[symbol] = df
+    # Calculate metrics for each stock
+    for symbol, df in stocks_data.items():
         stocks_metrics[symbol] = get_current_metrics(df)
     
     if len(stocks_data) < 2:
