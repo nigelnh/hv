@@ -1,6 +1,6 @@
-streamlit
 pandas
 numpy
-matplotlib
+streamlit
 plotly
-psycopg2-binary
+pyarrow
+scipy

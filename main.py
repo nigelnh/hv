@@ -1,43 +1,18 @@
 import subprocess
 import sys
 import os
-
-def run_script(script_name, description):
-    print(f"\n{'='*70}")
-    print(f"{description}")
-    print(f"{'='*70}\n")
-    
-    try:
-        result = subprocess.run(
-            [sys.executable, script_name],
-            cwd=os.path.dirname(os.path.abspath(__file__)),
-            check=True,
-            capture_output=False
-        )
-        
-        print(f"\n{description} - HOÀN TẤT!\n")
-        return True
-        
-    except subprocess.CalledProcessError as e:
-        print(f"\n❌ Lỗi khi chạy {script_name}!")
-        print(f"Exit code: {e.returncode}")
-        return False
-    except FileNotFoundError:
-        print(f"\n❌ Không tìm thấy file: {script_name}")
-        return False
-    except Exception as e:
-        print(f"\n❌ Lỗi không xác định: {e}")
-        return False
+from get_all_stock_data import get_all_stock_data
+from import_to_db import process_dataframe
 
 def run_streamlit_ui():
     print(f"\n{'='*70}")
-    print("BƯỚC 3: Khởi động giao diện Streamlit UI")
+    print("STEP 3: Launching Streamlit UI Dashboard")
     print(f"{'='*70}\n")
     
     try:
-        print("Đang mở Streamlit UI...")
-        print("Giao diện sẽ tự động mở trong trình duyệt của bạn")
-        print("\nĐể dừng UI, nhấn Ctrl+C trong terminal\n")
+        print("Opening Streamlit UI...")
+        print("The interface should automatically open in your default browser.")
+        print("\nTo stop the UI server, press Ctrl+C in this terminal.\n")
         
         subprocess.run(
             [sys.executable, "-m", "streamlit", "run", "ui.py"],
@@ -46,33 +21,47 @@ def run_streamlit_ui():
         )
         
     except KeyboardInterrupt:
-        print("\n\n Đã đóng Streamlit UI")
+        print("\n\nStreamlit UI server stopped.")
     except subprocess.CalledProcessError as e:
-        print(f"\n❌ Lỗi khi chạy Streamlit UI!")
+        print(f"\n[ERROR] Error running Streamlit UI!")
         print(f"Exit code: {e.returncode}")
     except Exception as e:
-        print(f"\n❌ Lỗi không xác định: {e}")
+        print(f"\n[ERROR] Unknown error: {e}")
 
 def main():
-    # Bước 1: Lấy dữ liệu chứng khoán
+    # Step 1: Fetch stock data from API
     print(f"\n{'='*70}")
-    print("BƯỚC 1: Lấy dữ liệu chứng khoán từ API")
-    print(f"{'='*70}\n")
-    success = run_script("get_all_stock_data.py", "BƯỚC 1: Lấy dữ liệu chứng khoán từ API")
-    
-    if not success:
-        print("\n⚠️  Dừng chương trình do lỗi ở bước 1")
-        return
-    
-    # Bước 2: Khởi động UI (charts sẽ được tạo tự động)
-    print(f"\n\n{'='*70}")
-    print("HOÀN TẤT XỬ LÝ DỮ LIỆU!")
-    print(f"{'='*70}")
-    print("Dữ liệu được lưu tại: data_output/")
-    print("Biểu đồ sẽ được tạo tự động khi mở UI (Plotly interactive charts)")
+    print("STEP 1: Fetching Raw Stock Prices from KB Buddy API (VN30 Basket)")
     print(f"{'='*70}\n")
     
-    # Chạy UI
+    symbols = [
+        "ACB", "BCM", "BID", "BVH", "CTG", "FPT", "GAS", "GVR", "HDB", "HPG", 
+        "MBB", "MSN", "MWG", "PLX", "POW", "SAB", "SHB", "SSB", "SSI", "STB", 
+        "TCB", "TPB", "VCB", "VHM", "VIB", "VIC", "VJC", "VNM", "VPB", "VRE"
+    ]
+    import datetime
+    from_date = "01/01/2022"
+    to_date   = datetime.datetime.now().strftime('%d/%m/%Y')
+    
+    # Fetch data: It fetches from API, saves raw Parquet files, and returns df dict
+    results = get_all_stock_data(symbols, from_date, to_date, delay=0.1)
+    
+    # Step 2: Compute Volatility & Save processed Parquet
+    print(f"\n{'='*70}")
+    print("STEP 2: Calculating Historical Volatility & Saving Processed Parquet")
+    print(f"{'='*70}\n")
+    
+    success_count = 0
+    for symbol, df in results.items():
+        if df is not None and not df.empty:
+            try:
+                process_dataframe(symbol, df)
+                success_count += 1
+            except Exception as e:
+                print(f"  [ERROR] Error processing symbol {symbol}: {e}")
+    print(f"\n--- SUCCESS! Processed and saved {success_count}/{len(symbols)} symbols. ---\n")
+    
+    # Step 3: Start UI
     run_streamlit_ui()
 
 if __name__ == "__main__":

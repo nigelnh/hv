@@ -1,17 +1,14 @@
-"""
-HV Dashboard - Main Application
-Professional Streamlit UI for Historical Volatility Analysis
-"""
 import streamlit as st
-from datetime import datetime, timedelta
-from utils.data_loader import load_available_symbols, load_stock_data, get_current_metrics
+from datetime import datetime
+from utils.data_loader import sync_latest_data, load_available_symbols, load_stock_data, get_current_metrics
 from utils.ui_components import (
     apply_custom_css,
     render_header,
     render_hv_chart_plotly,
-    render_quick_stats_cards,
     render_volatility_cone,
     render_hv_distribution,
+    render_risk_metrics_card,
+    render_peer_correlation_card,
     render_multi_stock_comparison
 )
 
@@ -22,6 +19,10 @@ st.set_page_config(
     page_title="HV Pro Terminal"
 )
 
+# Run T-1 Automatic Data Sync on Startup!
+# This checks if local Parquet files are stale, and if so, runs a quick 3s background pull from KB Buddy.
+sync_latest_data()
+
 # Apply custom styling
 apply_custom_css()
 
@@ -29,63 +30,78 @@ apply_custom_css()
 symbols = load_available_symbols()
 
 if not symbols:
-    st.error("❌ No data files found in data_output folder. Please run the data generation scripts first.")
+    st.error("""
+    ❌ No processed stock data found in the `data_output` folder!
+    Please run the full pipeline to fetch raw stock price data and calculate historical volatilities.
+    """)
     st.stop()
 
-# Stock selector (will be rendered inline with chart title)
+# Session states
 if 'selected_symbol' not in st.session_state:
     st.session_state.selected_symbol = symbols[0]
 
-# Multi-stock comparison mode
 if 'selected_stocks' not in st.session_state:
-    st.session_state.selected_stocks = [symbols[0]]
+    st.session_state.selected_stocks = ["FPT", "HPG", "VPB"] # default comparison basket
 
-if 'comparison_mode' not in st.session_state:
-    st.session_state.comparison_mode = False
+# Master Tabs (Overview with Green Badge)
+tab_overview, tab_comparison = st.tabs([
+    "Overview 🟢", 
+    "Peer Correlation 📊"
+])
 
-selected_tab = "Historical Volatility"  # Default tab
-
-# Load data based on mode
-try:
-    if st.session_state.comparison_mode and len(st.session_state.selected_stocks) > 1:
-        # Multi-stock comparison mode
-        from utils.ui_components import render_multi_stock_comparison
-        render_multi_stock_comparison(st.session_state.selected_stocks, symbols)
-    else:
-        # Single stock mode
-        current_symbol = st.session_state.selected_stocks[0] if st.session_state.comparison_mode else st.session_state.selected_symbol
+with tab_overview:
+    current_symbol = st.session_state.selected_symbol
+    try:
         df = load_stock_data(current_symbol)
         metrics = get_current_metrics(df)
         
-        # Header Section
+        # Render Premium Header (Symbol, session info, and live ticking clock)
         render_header(
             metrics['symbol'],
             metrics['latest_date'],
             metrics['current_price']
         )
         
-        # ---------------------------------------------------------
-        # MAIN GRID LAYOUT
-        # ---------------------------------------------------------
+        # -----------------------------------------------------------------
+        # BENTO GRID LAYOUT
+        # -----------------------------------------------------------------
         
-        # Row 1: Main Chart with integrated controls
-        render_hv_chart_plotly(df, current_symbol, symbols)
-
-        col_r1_c1, col_r1_c2 = st.columns([1, 1])
-
-        with col_r1_c1:
-            # Quick Stats and Distribution
-            render_quick_stats_cards(metrics)
-            render_hv_distribution(df, current_symbol)
-
-        with col_r1_c2:
-            # Volatility Cone
+        # Bento Row 1: Timeline (8/12) & Volatility Cone (4/12)
+        row1_col1, row1_col2 = st.columns([8, 4])
+        
+        with row1_col1:
+            # Cell A: Timeline Chart & selector controls
+            # Captures the filtered dataframe from date controls inside the card
+            df_filtered = render_hv_chart_plotly(df, current_symbol, symbols)
+            
+        with row1_col2:
+            # Cell B: Term Structure Volatility Cone
             render_volatility_cone(df, current_symbol)
             
-except FileNotFoundError as e:
-    st.error(f"❌ {str(e)}")
-except Exception as e:
-    st.error(f"❌ Error loading data: {str(e)}")
-    st.exception(e)
+        st.markdown("<div style='margin-bottom: 24px;'></div>", unsafe_allow_html=True)
+        
+        # Bento Row 2: Distribution (4/12), Risk Metrics (4/12), Peer Correlation (4/12)
+        row2_col1, row2_col2, row2_col3 = st.columns([4, 4, 4])
+        
+        with row2_col1:
+            # Cell C: Volatility Distribution Density
+            render_hv_distribution(df, current_symbol)
+            
+        with row2_col2:
+            # Cell D: High-Density Risk KPI Stats
+            render_risk_metrics_card(df, metrics)
+            
+        with row2_col3:
+            # Cell E: Peer Correlation, Beta & Directional Accuracy vs VN30
+            render_peer_correlation_card(current_symbol, df)
+            
+    except FileNotFoundError as e:
+        st.error(f"❌ {str(e)}")
+    except Exception as e:
+        st.error(f"❌ Error loading data: {str(e)}")
+        st.exception(e)
 
-
+with tab_comparison:
+    st.markdown("<div style='margin-bottom: 15px;'></div>", unsafe_allow_html=True)
+    # Render comparative overlay, full 30-stock heatmap, and stats matrix
+    render_multi_stock_comparison(st.session_state.selected_stocks, symbols)
