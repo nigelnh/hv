@@ -1,55 +1,33 @@
 @echo off
-title HV Pro Terminal Orchestrator (Local Parquet Edition)
+title HV Pro Terminal Orchestrator (Node & React Edition)
 color 0B
 cls
 
 echo =======================================================================
-echo              WELCOM TO HISTORICAL VOLATILITY PRO TERMINAL
+echo              WELCOME TO HISTORICAL VOLATILITY PRO TERMINAL
 echo =======================================================================
 echo.
 
-:: Check for virtual environment
-if not exist "venv\" (
-    echo [WARN] Virtual environment 'venv' not found in this folder!
-    echo Creating a new virtual environment...
-    python -m venv venv
+:: Check for node_modules
+if not exist "node_modules\" (
+    echo [WARN] node_modules folder not found!
+    echo Installing npm dependencies...
+    call npm install
     if errorlevel 1 (
-        echo [ERROR] Failed to create virtual environment! Please ensure Python is installed.
+        echo [ERROR] Failed to install packages! Please ensure Node.js is installed.
         pause
         exit /b 1
     )
-    echo [OK] Virtual environment created.
+    echo [OK] Dependencies installed.
     echo.
 )
-
-:: Activate virtual environment
-echo Activating virtual environment...
-call .\venv\Scripts\activate.bat
-if errorlevel 1 (
-    echo [ERROR] Failed to activate virtual environment!
-    pause
-    exit /b 1
-)
-echo [OK] Virtual environment activated.
-echo.
-
-:: Install / Update dependencies
-echo Checking and installing required packages (this may take a few seconds)...
-pip install -r requirements.txt --quiet
-if errorlevel 1 (
-    echo [ERROR] Failed to install requirements! Please check your internet connection.
-    pause
-    exit /b 1
-)
-echo [OK] Dependencies are up-to-date.
-echo.
 
 :menu
 echo =======================================================================
 echo   Please select an option to start:
 echo =======================================================================
-echo   [1] RUN FULL PIPELINE (Fetch data from API, process HV, run UI)
-echo   [2] RUN UI ONLY (Fast start - loads dashboard from local Parquet files)
+echo   [1] RUN FULL PIPELINE (Fetch SSI API data, process HVs, start UI)
+echo   [2] RUN UI ONLY (Fast start - launches React dashboard using cached JSON)
 echo   [3] EXIT
 echo =======================================================================
 echo.
@@ -65,17 +43,26 @@ goto menu
 
 :pipeline
 echo.
-echo Running full pipeline (Stage 1: API Fetch, Stage 2: Local HV Processing, Stage 3: UI)...
-python main.py
+echo Running full pipeline (Stage 1: API Fetch, Stage 2: Local HV Processing)...
+call node pipeline.js
+if errorlevel 1 (
+    echo [ERROR] Data pipeline execution failed!
+    pause
+    exit /b 1
+)
+echo.
+echo Launching React/Vite UI dashboard...
+call npm run dev
 goto end
 
 :ui_only
 echo.
-echo Launching Streamlit UI dashboard directly...
-streamlit run ui.py
+echo Launching React/Vite UI dashboard directly...
+call npm run dev
 goto end
 
 :end
 echo.
 echo Thank you for using HV Pro Terminal!
 pause
+
